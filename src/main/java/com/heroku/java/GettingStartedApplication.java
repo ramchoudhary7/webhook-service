@@ -72,12 +72,12 @@ class HelloController {
     }
 
     @PostMapping(value = "/webhook")
-    public ResponseEntity<Map<String, Object>> webhookResponse(@RequestBody WebhookRequest request) {
+    public ResponseEntity<Map<String, Object>> webhookResponse(@RequestBody Object request) {
         List<Map<String, String>> resList;
         List<Map<String, String>> staticResList = new ArrayList<>();
 
         // Based on language code
-        if (request.getLanguageCode().equals("hi")) {
+        if (false) {
             resList = List.of(
                     Map.of("type", "list", "title", "स्वास्थ्य एवं चिकित्सा संबंधी जानकारी"),
                     Map.of("type", "list", "title", "प्रेसक्रिप्शन से संबंधित जानकारी")
