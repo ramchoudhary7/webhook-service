@@ -1,9 +1,7 @@
 package com.heroku.java;
 
 import com.google.cloud.dialogflow.cx.v3.WebhookRequest;
-import com.google.cloud.dialogflow.cx.v3.WebhookResponse;
-import com.google.protobuf.Struct;
-import com.google.protobuf.Value;
+import com.google.protobuf.util.JsonFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -72,46 +70,54 @@ class HelloController {
     }
 
     @PostMapping(value = "/webhook")
-    public ResponseEntity<Map<String, Object>> webhookResponse(@RequestBody Object request) {
-        List<Map<String, String>> resList;
-        List<Map<String, String>> staticResList = new ArrayList<>();
+    public ResponseEntity<Map<String, Object>> webhookResponse(@RequestBody String request) throws Exception {
+        try {
+            WebhookRequest webhookRequest = stringToWebhookRequest(request);
 
-        // Based on language code
-        if (false) {
-            resList = List.of(
-                    Map.of("type", "list", "title", "स्वास्थ्य एवं चिकित्सा संबंधी जानकारी"),
-                    Map.of("type", "list", "title", "प्रेसक्रिप्शन से संबंधित जानकारी")
+            List<Map<String, String>> resList;
+            List<Map<String, String>> staticResList = new ArrayList<>();
+
+            // Based on language code
+            if (false) {
+                resList = List.of(
+                        Map.of("type", "list", "title", "स्वास्थ्य एवं चिकित्सा संबंधी जानकारी"),
+                        Map.of("type", "list", "title", "प्रेसक्रिप्शन से संबंधित जानकारी")
+                );
+            } else {
+                resList = List.of(
+                        Map.of("type", "list", "title", "I have health queries", "subtitle", "", "innerText", "I have health queries"),
+                        Map.of("type", "list", "title", "I have prescription related queries", "subtitle", "", "innerText", "I have prescription related queries")
+                );
+            }
+
+            // Static list
+            staticResList = List.of(
+                    Map.of("type", "suggestion", "title", "I am having a headache", "subtitle", "", "innerText", "I am having a headache"),
+                    Map.of("type", "suggestion", "title", "Side effects of crocin", "subtitle", "", "innerText", "Side effects of crocin"),
+                    Map.of("type", "suggestion", "title", "End Conversation", "subtitle", "", "innerText", "End Conversation")
             );
-        } else {
-            resList = List.of(
-                    Map.of("type", "list", "title", "I have health queries", "subtitle", "", "innerText", "I have health queries"),
-                    Map.of("type", "list", "title", "I have prescription related queries", "subtitle", "", "innerText", "I have prescription related queries")
-            );
+
+            // Building the final JSON response
+            Map<String, Object> jsonResponse = new HashMap<>();
+
+            jsonResponse.put("fulfillmentResponse", Map.of(
+                    "messages", List.of(
+                            Map.of("payload", Map.of("richContent", List.of(resList))),
+                            Map.of("payload", Map.of("richContent", List.of(staticResList)))
+                    )
+            ));
+
+            jsonResponse.put("payload", Map.of(
+                    "textFooterNote", "",
+                    "fulfillFooterNote", "Consultation will provide a broader diagnosis which may not be accurate all the time"
+            ));
+
+            return ResponseEntity.ok(jsonResponse);
         }
-
-        // Static list
-        staticResList = List.of(
-                Map.of("type", "suggestion", "title", "I am having a headache", "subtitle", "", "innerText", "I am having a headache"),
-                Map.of("type", "suggestion", "title", "Side effects of crocin", "subtitle", "", "innerText", "Side effects of crocin"),
-                Map.of("type", "suggestion", "title", "End Conversation", "subtitle", "", "innerText", "End Conversation")
-        );
-
-        // Building the final JSON response
-        Map<String, Object> jsonResponse = new HashMap<>();
-
-        jsonResponse.put("fulfillmentResponse", Map.of(
-                "messages", List.of(
-                        Map.of("payload", Map.of("richContent", List.of(resList))),
-                        Map.of("payload", Map.of("richContent", List.of(staticResList)))
-                )
-        ));
-
-        jsonResponse.put("payload", Map.of(
-                "textFooterNote", "",
-                "fulfillFooterNote", "Consultation will provide a broader diagnosis which may not be accurate all the time"
-        ));
-
-        return ResponseEntity.ok(jsonResponse);
+        catch (Exception e){
+            String x = "";
+            throw new Exception("");
+        }
     }
 
     @PostMapping(value = "/mock-webhook")
@@ -160,5 +166,18 @@ class HelloController {
     @PostMapping("/greet")
     public String greet(@RequestBody GreetingRequest request) {
         return "Hello, " + request.getName() + "!";
+    }
+
+    public static WebhookRequest stringToWebhookRequest(String response) {
+
+        WebhookRequest.Builder webhookRequestBuilder = WebhookRequest.newBuilder();
+
+        try {
+            JsonFormat.parser().ignoringUnknownFields().merge(response, webhookRequestBuilder);
+        } catch (Exception e) {
+            System.out.println("Failed to parse JSON to Protobuf: " + e.getMessage());
+        }
+
+        return webhookRequestBuilder.build();
     }
 }
